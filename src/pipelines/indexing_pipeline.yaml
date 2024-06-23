@@ -1,0 +1,36 @@
+components:
+  cleaner:
+    init_parameters:
+      remove_empty_lines: true
+      remove_extra_whitespaces: true
+      remove_regex: null
+      remove_repeated_substrings: false
+      remove_substrings: null
+    type: haystack.components.preprocessors.document_cleaner.DocumentCleaner
+  converter:
+    init_parameters: {}
+    type: haystack.components.converters.txt.TextFileToDocument
+  splitter:
+    init_parameters:
+      split_by: word
+      split_length: 500
+      split_overlap: 0
+    type: haystack.components.preprocessors.document_splitter.DocumentSplitter
+  writer:
+    init_parameters:
+      document_store:
+        init_parameters:
+          hosts: http://elasticsearch:9200
+          index: default
+        type: elasticsearch_haystack.document_store.ElasticsearchDocumentStore
+      policy: SKIP
+    type: haystack.components.writers.document_writer.DocumentWriter
+connections:
+- receiver: cleaner.documents
+  sender: converter.documents
+- receiver: splitter.documents
+  sender: cleaner.documents
+- receiver: writer.documents
+  sender: splitter.documents
+max_loops_allowed: 100
+metadata: {}
