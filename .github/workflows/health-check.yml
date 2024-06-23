@@ -6,7 +6,7 @@ on:
       - master
       - dev
 env:
-  PYTHON_VERSION: 3.10
+  PYTHON_VERSION: "3.10"
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
 jobs:
