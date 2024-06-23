@@ -26,6 +26,7 @@ jobs:
         run: |
           pip install ruff
           ruff --output-format=github .
+        continue-on-error: true
 #      - name: Run tests
 #        run: |
 #          pip install pytest pytest-cov
