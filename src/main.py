@@ -1,19 +1,27 @@
-from typing import List, Optional
-from pathlib import Path
 import os
 import uuid
+from pathlib import Path
+from typing import List, Optional
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File
 from haystack import Pipeline
+from src.indexing_pipeline import indexing_pipeline
+from src.rag_pipeline import rag_pipeline
 
+load_dotenv()
 
 app = FastAPI(title="My Haystack RAG API")
 
-# Load the pipelines from the YAML files
-with open("./src/pipelines/indexing_pipeline.yaml", "rb") as f:
-    indexing_pipeline = Pipeline.load(f)
-with open("./src/pipelines/rag_pipeline.yaml", "rb") as f:
-    rag_pipeline = Pipeline.load(f)
+# Get the absolute path to the directory containing this script
+# SCRIPT_DIR = Path(__file__).parent.absolute()
+# indexing_pipeline_file = os.path.join(SCRIPT_DIR, "pipelines", "indexing_pipeline.yaml")
+# rag_pipeline_file = os.path.join(SCRIPT_DIR, "pipelines", "rag_pipeline.yaml")
+# # Load the pipelines from the YAML files
+# with open(indexing_pipeline_file, "rb") as f:
+#     indexing_pipeline = Pipeline.load(f)
+# with open(rag_pipeline_file, "rb") as f:
+#     rag_pipeline = Pipeline.load(f)
 
 # Create the file upload directory if it doesn't exist
 FILE_UPLOAD_PATH = os.getenv("FILE_UPLOAD_PATH", str((Path(__file__).parent.parent / "file-upload").absolute()))

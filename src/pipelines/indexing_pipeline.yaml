@@ -8,7 +8,7 @@ components:
       remove_substrings: null
     type: haystack.components.preprocessors.document_cleaner.DocumentCleaner
   converter:
-    init_parameters: {}
+    init_parameters: { }
     type: haystack.components.converters.txt.TextFileToDocument
   splitter:
     init_parameters:
@@ -16,21 +16,28 @@ components:
       split_length: 500
       split_overlap: 0
     type: haystack.components.preprocessors.document_splitter.DocumentSplitter
+  doc_embedder:
+    init_parameters:
+      model: sentence-transformers/all-MiniLM-L6-v2
+      device: ComponentDevice.from_str('mps')
+    type: haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder
   writer:
     init_parameters:
       document_store:
         init_parameters:
           hosts: http://elasticsearch:9200
           index: default
-        type: elasticsearch_haystack.document_store.ElasticsearchDocumentStore
+        type: haystack_integrations.document_stores.elasticsearch.document_store.ElasticsearchDocumentStore
       policy: SKIP
     type: haystack.components.writers.document_writer.DocumentWriter
 connections:
-- receiver: cleaner.documents
-  sender: converter.documents
-- receiver: splitter.documents
-  sender: cleaner.documents
-- receiver: writer.documents
-  sender: splitter.documents
+  - receiver: cleaner.documents
+    sender: converter.documents
+  - receiver: splitter.documents
+    sender: cleaner.documents
+  - receiver: doc_embedder.embedding
+    sender: splitter.documents
+  - receiver: writer
+    sender: doc_embedder
 max_loops_allowed: 100
-metadata: {}
+metadata: { }

@@ -11,8 +11,10 @@ from haystack.components.generators import OpenAIGenerator, HuggingFaceLocalGene
 from haystack.utils import ComponentDevice
 # load environment variables from .env file
 from dotenv import load_dotenv
-
 load_dotenv()
+
+from haystack.components.embedders.sentence_transformers_document_embedder import
+
 
 # if "OPENAI_API_KEY" not in os.environ:
 #     os.environ["OPENAI_API_KEY"] = getpass("Enter OpenAI API key:")
@@ -58,7 +60,7 @@ basic_rag_pipeline.add_component("llm", generator)
 basic_rag_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 basic_rag_pipeline.connect("retriever", "prompt_builder.documents")
 basic_rag_pipeline.connect("prompt_builder", "llm")
-basic_rag_pipeline.warm_up()
+# basic_rag_pipeline.warm_up()
 
 question = "What is the capital of Spain?"
 
