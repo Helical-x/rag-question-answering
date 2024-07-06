@@ -1,4 +1,5 @@
 haystack-ai
+sentence-transformers>=2.2.0
 
 # Elasticsearch Document Store
 elasticsearch-haystack
@@ -7,3 +8,6 @@ elasticsearch-haystack
 fastapi==0.104.0
 uvicorn[standard]==0.23.2
 python-multipart==0.0.6
+# Preprocessing
+markdown-it-py
+mdit_plain pypdf

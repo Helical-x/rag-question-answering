@@ -1,3 +1,6 @@
+import os
+from getpass import getpass
+
 from haystack.components.builders import AnswerBuilder, PromptBuilder
 from haystack.components.generators import OpenAIGenerator
 from haystack_integrations.components.retrievers.elasticsearch import ElasticsearchEmbeddingRetriever
@@ -13,27 +16,32 @@ answer_builder = AnswerBuilder(
     reference_pattern=None,
 )
 
-llm = OpenAIGenerator(
-    model="gpt-3.5-turbo",
-    streaming_callback=None,
-    system_prompt=None,
-)
+if "OPENAI_API_KEY" not in os.environ:
+    os.environ["OPENAI_API_KEY"] = getpass("Enter OpenAI API key:")
+generator = OpenAIGenerator(model="gpt-3.5-turbo")
+
+# llm = OpenAIGenerator(
+#     model="gpt-3.5-turbo",
+#     streaming_callback=None,
+#     system_prompt=None,
+# )
+
 template = """
-Given the context please answer the question.
-If the context does not contain the answer, just say that you don't know.
+Instructions: Write a response to the question below. When question is outside the context of the documents, answer Sorry, I can't answer your question.
+
 Context:
-    {% for doc in documents %}
-        {{ doc.content }}
-    {% endfor %}
+{% for document in documents %}
+    {{ document.content }}
+{% endfor %}
+
 Question: {{question}}
 Answer:
 """
-prompt_builder = PromptBuilder(
-    template=template
-)
+
+prompt_builder = PromptBuilder(template=template)
 
 document_store = ElasticsearchDocumentStore(
-    host="http://localhost:9200/",
+    hosts=f'http://{os.getenv("ELASTICSEARCH_HOST", "localhost")}:9200',
     index="default"
 )
 retriever = ElasticsearchEmbeddingRetriever(
@@ -42,23 +50,20 @@ retriever = ElasticsearchEmbeddingRetriever(
     top_k=5
 )
 
-text_embedder = SentenceTransformersTextEmbedder(
-    model="sentence-transformers/all-MiniLM-L6-v2"
-)
+text_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+
 
 rag_pipeline = Pipeline()  # Define the pipeline
-rag_pipeline.add_component("retriever", retriever)
+# rag_pipeline.add_component("answer_builder", answer_builder)
 rag_pipeline.add_component("text_embedder", text_embedder)
-rag_pipeline.add_component("answer_builder", answer_builder)
-rag_pipeline.add_component("llm", llm)
+rag_pipeline.add_component("retriever", retriever)
 rag_pipeline.add_component("prompt_builder", prompt_builder)
+rag_pipeline.add_component("llm", generator)
 
+# Now, connect the components to each other
 rag_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 rag_pipeline.connect("retriever", "prompt_builder.documents")
-rag_pipeline.connect("retriever.documents", "answer_builder.documents")
-rag_pipeline.connect("prompt_builder.prompt", "llm.prompt")
-rag_pipeline.connect("llm.replies", "answer_builder.replies")
-# rag_pipeline.connect("llm.metadata", "answer_builder.metadata")
+rag_pipeline.connect("prompt_builder", "llm")
 
 rag_pipeline.max_loops_allowed = 100
 

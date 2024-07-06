@@ -75,12 +75,6 @@ def ask_rag_pipeline(query: str):
     """
     Ask a question to the RAG pipeline.
     """
-    result = rag_pipeline.run(
-        {
-            "retriever": {"query": query},
-            "prompt_builder": {"question": query},
-            "answer_builder": {"query": query},
-        }
-    )
+    result = rag_pipeline.run({"text_embedder": {"text": query}, "prompt_builder": {"question": query}})
 
     return result

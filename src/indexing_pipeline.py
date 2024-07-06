@@ -1,48 +1,47 @@
-from haystack.components.converters.txt import TextFileToDocument
-from haystack.components.embedders.sentence_transformers_document_embedder import SentenceTransformersDocumentEmbedder
-from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
-from haystack.components.writers.document_writer import DocumentWriter, DuplicatePolicy
+from haystack.components.converters import MarkdownToDocument, PyPDFToDocument, TextFileToDocument
+from haystack.components.joiners import DocumentJoiner
+from haystack.components.preprocessors import DocumentSplitter, DocumentCleaner
+from haystack.components.routers import FileTypeRouter
 from haystack_integrations.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.types import DuplicatePolicy
+
 from haystack import Pipeline
-indexing_pipeline = Pipeline()  # Define the pipeline
 
-cleaner = DocumentCleaner(
-    remove_empty_lines=True,
-    remove_extra_whitespaces=True,
-    remove_regex=None,
-    remove_repeated_substrings=False,
-    remove_substrings=None
-)
+document_store = ElasticsearchDocumentStore(hosts="http://localhost:9200/")
 
-converter = TextFileToDocument()
-splitter = DocumentSplitter(
-    split_by="word",
-    split_overlap=0,
-    split_length=500
-)
+file_type_router = FileTypeRouter(mime_types=["text/plain", "application/pdf", "text/markdown"])
+text_file_converter = TextFileToDocument()
+markdown_converter = MarkdownToDocument()
+pdf_converter = PyPDFToDocument()
+document_joiner = DocumentJoiner()
 
-doc_embedder = SentenceTransformersDocumentEmbedder(
-    model="sentence-transformers/all-MiniLM-L6-v2"
-)
-document_store = ElasticsearchDocumentStore(
-    host="http://localhost:9200/",
-    index="default"
-)
-writer = DocumentWriter(
-    document_store=document_store,
-    policy=DuplicatePolicy.SKIP
-)
+document_cleaner = DocumentCleaner()
+document_splitter = DocumentSplitter(split_by="word", split_length=150, split_overlap=50)
 
-# add components to the pipeline
-indexing_pipeline.add_component("cleaner", cleaner)
-indexing_pipeline.add_component("converter", converter)
-indexing_pipeline.add_component("splitter", splitter)
-indexing_pipeline.add_component("doc_embedder", doc_embedder)
-indexing_pipeline.add_component("writer", writer)
+document_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+document_writer = DocumentWriter(document_store, DuplicatePolicy.SKIP)
 
-# connect the components
-indexing_pipeline.connect("converter.documents", "cleaner.documents")
-indexing_pipeline.connect("cleaner.documents", "splitter.documents")
-indexing_pipeline.connect("splitter.documents", "doc_embedder.documents")  # corrected line
-indexing_pipeline.connect("doc_embedder.documents", "writer.documents")  # corrected line
-indexing_pipeline.max_loops_allowed = 100
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component(instance=file_type_router, name="file_type_router")
+indexing_pipeline.add_component(instance=text_file_converter, name="text_file_converter")
+indexing_pipeline.add_component(instance=markdown_converter, name="markdown_converter")
+indexing_pipeline.add_component(instance=pdf_converter, name="pypdf_converter")
+indexing_pipeline.add_component(instance=document_joiner, name="document_joiner")
+indexing_pipeline.add_component(instance=document_cleaner, name="document_cleaner")
+indexing_pipeline.add_component(instance=document_splitter, name="document_splitter")
+indexing_pipeline.add_component(instance=document_embedder, name="document_embedder")
+indexing_pipeline.add_component(instance=document_writer, name="document_writer")
+
+indexing_pipeline.connect("file_type_router.text/plain", "text_file_converter.sources")
+indexing_pipeline.connect("file_type_router.application/pdf", "pypdf_converter.sources")
+indexing_pipeline.connect("file_type_router.text/markdown", "markdown_converter.sources")
+indexing_pipeline.connect("text_file_converter", "document_joiner")
+indexing_pipeline.connect("pypdf_converter", "document_joiner")
+indexing_pipeline.connect("markdown_converter", "document_joiner")
+indexing_pipeline.connect("document_joiner", "document_cleaner")
+indexing_pipeline.connect("document_cleaner", "document_splitter")
+indexing_pipeline.connect("document_splitter", "document_embedder")
+indexing_pipeline.connect("document_embedder", "document_writer")
