@@ -29,3 +29,10 @@ services:
     depends_on:
       elasticsearch:
         condition: service_healthy
+
+  clientapp:
+    build:
+      context: ./clientapp
+    ports:
+        - 3000:3000
+    restart: on-failure
